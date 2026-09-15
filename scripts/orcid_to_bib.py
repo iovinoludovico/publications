@@ -60,7 +60,7 @@ def get_work_detail(put_code: int) -> dict:
 def extract_doi(summary: dict) -> str | None:
     for eid in summary.get("external-ids", {}).get("external-id", []) or []:
         if eid.get("external-id-type", "").lower() == "doi":
-            doi = eid.get("external-id-normalized", {}).get("value") or eid.get("external-id-value")
+            doi = (eid.get("external-id-normalized") or {}).get("value") or eid.get("external-id-value")
             if doi:
                 return doi.strip().lower()
     return None
@@ -89,7 +89,7 @@ def orcid_bibtex(put_code: int) -> str | None:
 
 
 def fallback_entry(summary: dict, put_code: int) -> str:
-    title = (summary.get("title") or {}).get("title", {}).get("value", "Untitled")
+    title = ((summary.get("title") or {}).get("title") or {}).get("value", "Untitled")
     year = ((summary.get("publication-date") or {}).get("year") or {}).get("value", "")
     journal = (summary.get("journal-title") or {}).get("value", "")
     url = (summary.get("url") or {}).get("value", "")
