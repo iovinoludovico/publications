@@ -27,6 +27,7 @@ jobs:
         run: python scripts/orcid_to_bib.py
 
       - name: Commit if changed
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -36,4 +37,22 @@ jobs:
           else
             git commit -m "chore: update publications.bib from ORCID ($(date -u +%Y-%m-%d))"
             git push
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
           fi
+
+      # Pushes made with GITHUB_TOKEN don't trigger notify-site.yml, so notify the website here.
+      - name: Notify website
+        if: steps.commit.outputs.sha != ''
+        env:
+          TOKEN: ${{ secrets.SITE_DISPATCH_TOKEN }}
+          SHA: ${{ steps.commit.outputs.sha }}
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::warning::SITE_DISPATCH_TOKEN is not set; the site will pick up the change at its nightly rebuild."
+            exit 0
+          fi
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $TOKEN" \
+            https://api.github.com/repos/iovinoludovico/mywebsite/dispatches \
+            -d "{\"event_type\":\"publications-updated\",\"client_payload\":{\"sha\":\"$SHA\"}}"
